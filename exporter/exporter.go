@@ -1,4 +1,4 @@
-package main
+package exporter
 
 import (
 	"bufio"
@@ -127,7 +127,7 @@ func tree(root string, exportPath string) error {
 	err := filepath.Walk(root, func(p string, fi os.FileInfo, err error) error {
 		if path.Ext(p) == ".aseprite" {
 
-      var trimFlag = ""
+			var trimFlag = ""
 
 			dbEntry := createDBEntry(p)
 			tempDB = append(tempDB, dbEntry)
@@ -186,7 +186,7 @@ func updateDB(dbPath string) {
 	Handle(w.Flush(), "failed to update DB [flush]")
 }
 
-func main() {
+func run() {
 	if len(os.Args) < 5 {
 		log.Panic("missing arguments")
 	}
