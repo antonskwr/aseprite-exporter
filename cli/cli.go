@@ -50,7 +50,7 @@ func (cli *CommandLine) Run() {
 	sourceDir := runCmd.String(sourceDirFlag, "", "Path to directory with aseprite projects")
 	targetDir := runCmd.String(targetDirFlag, "", "Path to directory for project tree to be exported into")
 	timeDbPath := runCmd.String(timeDbPathFlag, "", "DB path for keeping project's last modified time")
-	muteWarning := runCmd.Bool(muteWarningFlag, false, "Mute target directory overwrite waring")
+	muteWarning := runCmd.Bool(muteWarningFlag, false, "Mute target directory overwrite warning")
 
 	if len(os.Args) < 6 {
 		cli.printUsage()
