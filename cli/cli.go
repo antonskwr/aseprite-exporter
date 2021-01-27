@@ -15,6 +15,7 @@ const (
 	sourceDirFlag    = "source"
 	targetDirFlag    = "target"
 	timeDbPathFlag   = "db"
+	muteWarningFlag  = "mute"
 )
 
 type CommandLine struct{}
@@ -49,6 +50,7 @@ func (cli *CommandLine) Run() {
 	sourceDir := runCmd.String(sourceDirFlag, "", "Path to directory with aseprite projects")
 	targetDir := runCmd.String(targetDirFlag, "", "Path to directory for project tree to be exported into")
 	timeDbPath := runCmd.String(timeDbPathFlag, "", "DB path for keeping project's last modified time")
+	muteWarning := runCmd.Bool(muteWarningFlag, false, "Mute target directory overwrite waring")
 
 	if len(os.Args) < 6 {
 		cli.printUsage()
@@ -88,6 +90,6 @@ func (cli *CommandLine) Run() {
 		}
 
 		// proceed
-		exporter.Run(*asepritePath, *sourceDir, *targetDir, *timeDbPath)
+		exporter.Run(*asepritePath, *sourceDir, *targetDir, *timeDbPath, *muteWarning)
 	}
 }

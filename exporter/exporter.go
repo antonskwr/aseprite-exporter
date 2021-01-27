@@ -27,7 +27,7 @@ const (
 	DBEmpty
 )
 
-func Handle(err error, message ...string) {
+func handleErr(err error, message ...string) {
 	if err != nil {
 		if len(message) > 0 {
 			err = fmt.Errorf("[%s] -- %w --", message[0], err)
@@ -49,7 +49,7 @@ func loadDB(dbPath string) []DBEntry {
 	}
 
 	fileTextBuffer, err := ioutil.ReadFile(dbPath)
-	Handle(err)
+	handleErr(err)
 
 	sourceText := string(fileTextBuffer)
 	lines := strings.Split(sourceText, "\n")
@@ -130,7 +130,7 @@ func tree(root string, exportPath string, db *[]DBEntry, expFunc ExportFunc) ([]
 
 			err = os.MkdirAll(exportDir, os.ModePerm)
 
-			Handle(err, "export error")
+			handleErr(err, "export error")
 
 			filename := filepath.Base(exportDir)
 			exportedFileName := fmt.Sprintf("%s-%s", exportDir, filenameFormat)
@@ -150,7 +150,7 @@ func tree(root string, exportPath string, db *[]DBEntry, expFunc ExportFunc) ([]
 			fullExpPath := fmt.Sprintf("%s/%s", exportDir, exportedFileName)
 
 			out, err := expFunc(p, scaling, trimFlag, fullExpPath)
-			Handle(err, "aseprite error")
+			handleErr(err, "aseprite error")
 			fmt.Printf("%s", out)
 		}
 
@@ -162,7 +162,7 @@ func tree(root string, exportPath string, db *[]DBEntry, expFunc ExportFunc) ([]
 
 func updateDB(dbPath string, newDB *[]DBEntry) {
 	file, err := os.Create(dbPath)
-	Handle(err, "failed to update DB")
+	handleErr(err, "failed to update DB")
 	defer file.Close()
 
 	w := bufio.NewWriter(file)
@@ -170,7 +170,7 @@ func updateDB(dbPath string, newDB *[]DBEntry) {
 		line := fmt.Sprintf("%s|%s", (*newDB)[i].Path, (*newDB)[i].ModTime)
 		fmt.Fprintln(w, line)
 	}
-	Handle(w.Flush(), "failed to update DB [flush]")
+	handleErr(w.Flush(), "failed to update DB [flush]")
 }
 
 type ExportFunc func(filePath, scaling, trimFlag, exportPath string) ([]byte, error)
@@ -190,18 +190,56 @@ func newExportFunc(aseRunCmd string) ExportFunc {
 	}
 }
 
-func Run(aseRunCmd, sourceDir, targetDir, dbPath string) {
+func checkDirExists(path string) error {
+	stat, err := os.Stat(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return fmt.Errorf("%s: no such file or directory", path)
+		}
+		return err
+	}
+	if !stat.IsDir() {
+		return fmt.Errorf("%s is not a directory", path)
+	}
+	return nil
+}
+
+func promptOverwriteWarning(path string) {
+	fmt.Printf("Will overwrite \"%s\" directory, continue? [Y/N]\n", path)
+	cliReader := bufio.NewReader(os.Stdin)
+	text, err := cliReader.ReadString('\n')
+	handleErr(err)
+
+	text = strings.TrimSuffix(text, "\n")
+
+	switch true {
+	case (text == "Y" || text == "y"):
+		return
+	case (text == "N" || text == "n"):
+		os.Exit(0)
+	default:
+		promptOverwriteWarning(path)
+	}
+}
+
+func Run(aseRunCmd, sourceDir, targetDir, dbPath string, mutePrompt bool) {
+	handleErr(checkDirExists(sourceDir))
+	handleErr(checkDirExists(targetDir))
+
 	db := loadDB(dbPath)
 	if !checkNotEmptyDB(&db) {
-		err := os.RemoveAll(targetDir)
-		Handle(err)
+		if !mutePrompt {
+			promptOverwriteWarning(targetDir)
+		}
+		err := os.RemoveAll(targetDir) // this is dangerous
+		handleErr(err)
 	}
 
 	exportFunc := newExportFunc(aseRunCmd)
 	newDB, err := tree(sourceDir, targetDir, &db, exportFunc)
 	if err != nil {
 		msg := fmt.Sprintf("Failed to tree at %s", sourceDir)
-		Handle(err, msg)
+		handleErr(err, msg)
 	}
 
 	updateDB(dbPath, &newDB)
