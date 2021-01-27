@@ -18,11 +18,6 @@ type DBEntry struct {
 	ModTime string
 }
 
-var projectsToExport []string
-var filenameFormat = "[t={tag}][f={frame}].png"
-var DB []DBEntry
-var tempDB []DBEntry
-
 type Option = int32
 
 const (
@@ -32,43 +27,25 @@ const (
 	DBEmpty
 )
 
-const (
-	scaling = "1"
-)
-
-var asepriteRunCmd = ""
-
 func Handle(err error, message ...string) {
-	msg := ""
-
-	if len(message) == 1 {
-		msg = message[0] + ":"
-	}
-
 	if err != nil {
-		log.Panic(msg, err)
+		if len(message) > 0 {
+			err = fmt.Errorf("[%s] -- %w --", message[0], err)
+		}
+		log.Fatal(err)
 	}
 }
 
-// I form a slice of the above struct
-
-// func parse() {
-// 	for i := range myconfig {
-// 		if myconfig[i].Key == "key1" {
-// 			// Found!
-// 			break
-// 		}
-// 	}
-// }
-
-func checkNotEmptyDB() bool {
-	return len(DB) != 0
+func checkNotEmptyDB(db *[]DBEntry) bool {
+	return len(*db) != 0
 }
 
-func loadDB(dbPath string) {
+func loadDB(dbPath string) []DBEntry {
+	var DB []DBEntry
+
 	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
 		fmt.Println("No DB Found")
-		return
+		return DB
 	}
 
 	fileTextBuffer, err := ioutil.ReadFile(dbPath)
@@ -91,6 +68,8 @@ func loadDB(dbPath string) {
 		dbEntry := DBEntry{entries[0], entries[1]}
 		DB = append(DB, dbEntry)
 	}
+
+	return DB
 }
 
 func createDBEntry(path string) DBEntry {
@@ -105,14 +84,14 @@ func createDBEntry(path string) DBEntry {
 	return DBEntry{path, modtime}
 }
 
-func checkFileModified(entry DBEntry) Option {
-	if !checkNotEmptyDB() {
+func checkFileModified(entry DBEntry, db *[]DBEntry) Option {
+	if !checkNotEmptyDB(db) {
 		return DBEmpty
 	}
 
-	for i := range DB {
-		if DB[i].Path == entry.Path {
-			if DB[i].ModTime == entry.ModTime {
+	for i := range *db {
+		if (*db)[i].Path == entry.Path {
+			if (*db)[i].ModTime == entry.ModTime {
 				return NotModified
 			}
 			// Found!
@@ -123,16 +102,20 @@ func checkFileModified(entry DBEntry) Option {
 	return NotFound
 }
 
-func tree(root string, exportPath string) error {
+func tree(root string, exportPath string, db *[]DBEntry, expFunc ExportFunc) ([]DBEntry, error) {
+	var tempDB []DBEntry
+
 	err := filepath.Walk(root, func(p string, fi os.FileInfo, err error) error {
 		if path.Ext(p) == ".aseprite" {
 
 			var trimFlag = ""
+			var scaling = "1"
+			var filenameFormat = "[t={tag}][f={frame}].png"
 
 			dbEntry := createDBEntry(p)
 			tempDB = append(tempDB, dbEntry)
 
-			switch checkFileModified(dbEntry) {
+			switch checkFileModified(dbEntry, db) {
 			case WasModified:
 			case DBEmpty:
 			case NotModified:
@@ -150,62 +133,76 @@ func tree(root string, exportPath string) error {
 			Handle(err, "export error")
 
 			filename := filepath.Base(exportDir)
-			fullExpPath := fmt.Sprintf("%s/%s-%s", exportDir, filename, filenameFormat)
+			exportedFileName := fmt.Sprintf("%s-%s", exportDir, filenameFormat)
 
-			if strings.HasSuffix(filename, "_s") {
-				fullExpPath = fmt.Sprintf("%s/{layer}-%s", exportDir, filenameFormat)
-				filename = strings.TrimSuffix(filename, "_s")
-			}
-
-			if strings.HasSuffix(filename, "_t") {
+			switch {
+			case strings.HasSuffix(filename, "_t_s"):
 				trimFlag = "--trim"
+				exportedFileName = fmt.Sprintf("{layer}-%s", filenameFormat)
+			case strings.HasSuffix(filename, "_s"):
+				exportedFileName = fmt.Sprintf("{layer}-%s", filenameFormat)
+			case strings.HasSuffix(filename, "_t"):
+				trimFlag = "--trim"
+				filename = strings.TrimSuffix(filename, "_t")
+				exportedFileName = fmt.Sprintf("%s-%s", filename, filenameFormat)
 			}
 
-			out, err := exec.Command(asepriteRunCmd, "-b", p, "--scale", scaling, trimFlag, "--save-as", fullExpPath).Output()
-			Handle(err, "aseprite error")
+			fullExpPath := fmt.Sprintf("%s/%s", exportDir, exportedFileName)
 
+			out, err := expFunc(p, scaling, trimFlag, fullExpPath)
+			Handle(err, "aseprite error")
 			fmt.Printf("%s", out)
 		}
 
 		return nil
 	})
 
-	return err
+	return tempDB, err
 }
 
-func updateDB(dbPath string) {
+func updateDB(dbPath string, newDB *[]DBEntry) {
 	file, err := os.Create(dbPath)
 	Handle(err, "failed to update DB")
 	defer file.Close()
 
 	w := bufio.NewWriter(file)
-	for i := range tempDB {
-		line := fmt.Sprintf("%s|%s", tempDB[i].Path, tempDB[i].ModTime)
+	for i := range *newDB {
+		line := fmt.Sprintf("%s|%s", (*newDB)[i].Path, (*newDB)[i].ModTime)
 		fmt.Fprintln(w, line)
 	}
 	Handle(w.Flush(), "failed to update DB [flush]")
 }
 
-func run() {
-	if len(os.Args) < 5 {
-		log.Panic("missing arguments")
+type ExportFunc func(filePath, scaling, trimFlag, exportPath string) ([]byte, error)
+
+func newExportFunc(aseRunCmd string) ExportFunc {
+	return func(filePath, scaling, trimFlag, exportPath string) ([]byte, error) {
+		out, err := exec.Command(
+			aseRunCmd,
+			"-b", filePath,
+			"--scale", scaling,
+			trimFlag,
+			"--save-as",
+			exportPath,
+		).Output()
+
+		return out, err
 	}
+}
 
-	asepriteRunCmd = os.Args[1]
-	asepriteProjectDir := os.Args[2]
-	exportPath := os.Args[3]
-	dbPath := os.Args[4]
-
-	loadDB(dbPath)
-	if !checkNotEmptyDB() {
-		err := os.RemoveAll(exportPath)
+func Run(aseRunCmd, sourceDir, targetDir, dbPath string) {
+	db := loadDB(dbPath)
+	if !checkNotEmptyDB(&db) {
+		err := os.RemoveAll(targetDir)
 		Handle(err)
 	}
 
-	err := tree(asepriteProjectDir, exportPath)
+	exportFunc := newExportFunc(aseRunCmd)
+	newDB, err := tree(sourceDir, targetDir, &db, exportFunc)
 	if err != nil {
-		log.Printf("tree %s: %v\n", os.Args[1], err)
+		msg := fmt.Sprintf("Failed to tree at %s", sourceDir)
+		Handle(err, msg)
 	}
 
-	updateDB(dbPath)
+	updateDB(dbPath, &newDB)
 }
