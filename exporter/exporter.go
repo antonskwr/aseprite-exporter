@@ -205,7 +205,7 @@ func checkDirExists(path string) error {
 }
 
 func promptOverwriteWarning(path string) {
-	fmt.Printf("Will overwrite \"%s\" directory, continue? [Y/N]\n", path)
+	fmt.Printf("Will overwrite \"%s\" directory, continue? [Y/N]: ", path)
 	cliReader := bufio.NewReader(os.Stdin)
 	text, err := cliReader.ReadString('\n')
 	handleErr(err)
