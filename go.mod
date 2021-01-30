@@ -1,3 +1,3 @@
-module github.com/antonskwr/aseprite-exporter
+module aseprite-exporter
 
 go 1.14
