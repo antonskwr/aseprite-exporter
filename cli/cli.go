@@ -6,7 +6,7 @@ import (
 	"log"
 	"os"
 
-	"aseprite-exporter/exporter"
+	"github.com/antonskwr/aseprite-exporter/exporter"
 )
 
 const (

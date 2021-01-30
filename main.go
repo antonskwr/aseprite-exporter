@@ -1,6 +1,6 @@
 package main
 
-import "aseprite-exporter/cli"
+import "github.com/antonskwr/aseprite-exporter/cli"
 
 func main() {
 	cli := cli.CommandLine{}
