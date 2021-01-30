@@ -133,7 +133,7 @@ func tree(root string, exportPath string, db *[]DBEntry, expFunc ExportFunc) ([]
 			handleErr(err, "export error")
 
 			filename := filepath.Base(exportDir)
-			exportedFileName := fmt.Sprintf("%s-%s", exportDir, filenameFormat)
+			exportedFileName := fmt.Sprintf("%s-%s", filename, filenameFormat)
 
 			switch {
 			case strings.HasSuffix(filename, "_t_s"):
