@@ -47,7 +47,7 @@ func (cli *CommandLine) Run() {
 	runCmd := flag.NewFlagSet(runCmdLiteral, flag.ExitOnError)
 
 	asepritePath := runCmd.String(asepritePathFlag, "", "Path to aseprite executable")
-	sourceDir := runCmd.String(sourceDirFlag, "", "Path to directory with aseprite projects")
+	sourceDir := runCmd.String(sourceDirFlag, "", "Path to root directory with aseprite projects")
 	targetDir := runCmd.String(targetDirFlag, "", "Path to directory for project tree to be exported into")
 	timeDbPath := runCmd.String(timeDbPathFlag, "", "DB path for keeping project's last modified time")
 	muteWarning := runCmd.Bool(muteWarningFlag, false, "Mute target directory overwrite warning")
