@@ -94,7 +94,6 @@ func checkFileModified(entry DBEntry, db *[]DBEntry) Option {
 			if (*db)[i].ModTime == entry.ModTime {
 				return NotModified
 			}
-			// Found!
 			break
 		}
 	}

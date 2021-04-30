@@ -89,7 +89,6 @@ func (cli *CommandLine) Run() {
 			os.Exit(0)
 		}
 
-		// proceed
 		exporter.Run(*asepritePath, *sourceDir, *targetDir, *timeDbPath, *muteWarning)
 	}
 }
