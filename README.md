@@ -18,3 +18,17 @@ Usage of export:
     -target string
         Path to directory for project tree to be exported into
 ```
+
+## Suffixes
+
+Use `_s` suffix in project name to split layers when exporting.
+
+Use `_t` suffix in project name to trim empty space around sprite when exporting.
+
+Suffixes can be combined.
+
+Example:
+
+```
+asset_s_t.aseprite
+```

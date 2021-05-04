@@ -135,7 +135,7 @@ func tree(root string, exportPath string, db *[]DBEntry, expFunc ExportFunc) ([]
 			exportedFileName := fmt.Sprintf("%s-%s", filename, filenameFormat)
 
 			switch {
-			case strings.HasSuffix(filename, "_t_s"):
+			case strings.HasSuffix(filename, "_t_s") || strings.HasSuffix(filename, "_s_t"):
 				trimFlag = "--trim"
 				exportedFileName = fmt.Sprintf("{layer}-%s", filenameFormat)
 			case strings.HasSuffix(filename, "_s"):
